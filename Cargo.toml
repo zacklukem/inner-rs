@@ -1,10 +1,8 @@
 [package]
-name = "inner"
-version = "0.1.1"
-authors = ["David Henningsson <david.henningsson@canonical.com>"]
+name = "try_utils"
+version = "0.1.2"
+authors = ["David Henningsson <david.henningsson@canonical.com>", "Zachary Mayhew"]
 license = "Apache-2.0/MIT"
-description = "The inner! macro descends into an enum variant. It's more flexible than try!() and unwrap(), and it works with your enum, too!"
-documentation = "http://diwic.github.io/rs-docs/inner/index.html"
-repository = "https://github.com/diwic/inner-rs"
+description = "The try! macro descends into an enum variant. It's more flexible than ? and unwrap(), and it works with your enum, too!"
+repository = "https://github.com/zacklukem/inner-rs"
 keywords = ["unwrap", "try", "let", "else"]
-

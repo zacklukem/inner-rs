@@ -7,7 +7,7 @@
 //! The simplest case for `inner!` is almost like unwrap:
 //!
 //! ```
-//! # #[macro_use] extern crate inner;
+//! # use try_utils::*;
 //! # fn main() {
 //! let x = Some(1);
 //! let y: Result<_, ()> = Ok(2);
@@ -34,10 +34,10 @@
 //! If panic isn't an option - and it usually isn't - just add an `else` clause:
 //!
 //! ```
-//! # #[macro_use] extern crate inner;
+//! # use try_utils::*;
 //! # fn main() {
 //! let x: Result<String, i32> = Err(7);
-//! let y = inner!(x, else { return });
+//! let y = inner!(x, else return);
 //! // Since x is an Err, we'll never get here.
 //! println!("The string length is: {}", y.len());
 //! # }
@@ -50,7 +50,7 @@
 //! No problem, just add a `|variable|` after `else`, like this:
 //!
 //! ```
-//! # #[macro_use] extern crate inner;
+//! # use try_utils::*;
 //! # fn main() {
 //! let x: Result<String, i32> = Err(7);
 //! let y = inner!(x, else |e| {
@@ -68,13 +68,13 @@
 //! It does not work only with `Option` and `Result`. Just add an `if` clause:
 //!
 //! ```
-//! # #[macro_use] extern crate inner;
+//! # use try_utils::*;
 //! # fn main() {
 //! enum Fruit {
 //!     Apple(i32),
 //!     Orange(i16),
 //! }
-//! 
+//!
 //! let z = Fruit::Apple(15);
 //! let y = inner!(z, if Fruit::Apple, else {
 //!     println!("I wanted an apple and I didn't get one!");
@@ -91,14 +91,14 @@
 //! `Err`) is passed on to the `else` clause:
 //!
 //! ```
-//! # #[macro_use] extern crate inner;
+//! # use try_utils::*;
 //! # fn main() {
 //! #[derive(Eq, PartialEq, Debug)]
 //! enum Fruit {
 //!     Apple(i32),
 //!     Orange(i16),
 //! }
-//! 
+//!
 //! let z = Fruit::Orange(15);
 //! inner!(z, if Fruit::Apple, else |e| {
 //!     assert_eq!(e, Fruit::Orange(15));
@@ -142,83 +142,67 @@ pub trait IntoResult<T, E> {
     fn into_result(self) -> Result<T, E>;
 }
 
-
-/* 
-// Impossible due to conflicting impls :-(
-impl<T, E, Z> IntoResult<T, E> for Z where Z: Into<Result<T, E>> {
-    fn into_result(self) -> Result<T, E> { self.into() }
-}
-*/
-
 impl<T, E> IntoResult<T, E> for Result<T, E> {
     #[inline]
-    fn into_result(self) -> Result<T, E> { self }
+    fn into_result(self) -> Result<T, E> {
+        self
+    }
 }
 
 impl<T> IntoResult<T, ()> for Option<T> {
     #[inline]
-    fn into_result(self) -> Result<T, ()> { self.ok_or(()) }
+    fn into_result(self) -> Result<T, ()> {
+        self.ok_or(())
+    }
 }
 
-/// The `inner!` macro - see module level documentation for details.
+/// The `try!` macro - see module level documentation for details.
 #[macro_export]
 macro_rules! inner {
-    ($x:expr, if $i:path, else |$e:ident| $b:block) => {
-        {
-            match $x {
-                $i(q) => q,
-                $e @ _ => $b,
-            }
+    ($x:expr, if $i:path, else |$e:ident| $b:expr) => {{
+        match $x {
+            $i(q) => q,
+            $e @ _ => $b,
         }
-    };
+    }};
 
-    ($x:expr, if $i:path, else $b:block) => {
-        {
-            match $x {
-                $i(q) => q,
-                _ => $b,
-            }
+    ($x:expr, if $i:path, else $b:expr) => {{
+        match $x {
+            $i(q) => q,
+            _ => $b,
         }
-    };
+    }};
 
-    ($x:expr, else |$e:ident| $b:block) => {
-        {
-            use $crate::IntoResult;
-            match $x.into_result() {
-                Ok(q) => q,
-                Err($e) => $b,
-            }
+    ($x:expr, else |$e:ident| $b:expr) => {{
+        use $crate::IntoResult;
+        match $x.into_result() {
+            Ok(q) => q,
+            Err($e) => $b,
         }
-    };
+    }};
 
-    ($x:expr, else $b:block) => {
-        {
-            use $crate::IntoResult;
-            match $x.into_result() {
-                Ok(q) => q,
-                _ => $b,
-            }
+    ($x:expr, else $b:expr) => {{
+        use $crate::IntoResult;
+        match $x.into_result() {
+            Ok(q) => q,
+            _ => $b,
         }
-    };
+    }};
 
-    ($x:expr, if $i:path) => {
-        {
-            match $x {
-                $i(q) => q,
-                _ => panic!("Unexpected value found inside '{}'", stringify!($x)),
-            }
+    ($x:expr, if $i:path) => {{
+        match $x {
+            $i(q) => q,
+            _ => panic!("Unexpected value found inside '{}'", stringify!($x)),
         }
-    };
+    }};
 
-    ($x:expr) => {
-        {
-            use $crate::IntoResult;
-            match $x.into_result() {
-                Ok(q) => q,
-                _ => panic!("Unexpected value found inside '{}'", stringify!($x)),
-            }
+    ($x:expr) => {{
+        use $crate::IntoResult;
+        match $x.into_result() {
+            Ok(q) => q,
+            _ => panic!("Unexpected value found inside '{}'", stringify!($x)),
         }
-    };
+    }};
 }
 
 /// Converts your enum to an Option.
@@ -231,32 +215,26 @@ macro_rules! inner {
 /// ```
 #[macro_export]
 macro_rules! some {
-    ($x:expr, if $i:path, else |$e:ident| $b:block) => {
-        {
-            match $x {
-                $i(q) => Some(q),
-                $e @ _ => $b,
-            }
+    ($x:expr, if $i:path, else |$e:ident| $b:expr) => {{
+        match $x {
+            $i(q) => Some(q),
+            $e @ _ => $b,
         }
-    };
+    }};
 
-    ($x:expr, if $i:path, else $b:block) => {
-        {
-            match $x {
-                $i(q) => Some(q),
-                _ => $b,
-            }
+    ($x:expr, if $i:path, else $b:expr) => {{
+        match $x {
+            $i(q) => Some(q),
+            _ => $b,
         }
-    };
+    }};
 
-    ($x:expr, if $i:path) => {
-        {
-            match $x {
-                $i(q) => Some(q),
-                _ => None,
-            }
+    ($x:expr, if $i:path) => {{
+        match $x {
+            $i(q) => Some(q),
+            _ => None,
         }
-    };
+    }};
 }
 
 /// Converts your enum to an Result.
@@ -272,52 +250,41 @@ macro_rules! some {
 /// ```
 #[macro_export]
 macro_rules! ok {
-    ($x:expr, if $i:path, else |$e:ident| $b:block) => {
-        {
-            match $x {
-                $i(q) => Ok(q),
-                $e @ _ => $b,
-            }
+    ($x:expr, if $i:path, else |$e:ident| $b:expr) => {{
+        match $x {
+            $i(q) => Ok(q),
+            $e @ _ => $b,
         }
-    };
+    }};
 
-    ($x:expr, if $i:path, else $b:block) => {
-        {
-            match $x {
-                $i(q) => Ok(q),
-                _ => $b,
-            }
+    ($x:expr, if $i:path, else $b:expr) => {{
+        match $x {
+            $i(q) => Ok(q),
+            _ => $b,
         }
-    };
+    }};
 
-    ($x:expr, if $i:path, or |$e:ident| $b:block) => {
-        {
-            match $x {
-                $i(q) => Ok(q),
-                $e @ _ => Err($b),
-            }
+    ($x:expr, if $i:path, or |$e:ident| $b:expr) => {{
+        match $x {
+            $i(q) => Ok(q),
+            $e @ _ => Err($b),
         }
-    };
+    }};
 
-    ($x:expr, if $i:path, or $b:block) => {
-        {
-            match $x {
-                $i(q) => Ok(q),
-                _ => Err($b),
-            }
+    ($x:expr, if $i:path, or $b:expr) => {{
+        match $x {
+            $i(q) => Ok(q),
+            _ => Err($b),
         }
-    };
+    }};
 
-    ($x:expr, if $i:path) => {
-        {
-            match $x {
-                $i(q) => Ok(q),
-                n @ _ => Err(n),
-            }
+    ($x:expr, if $i:path) => {{
+        match $x {
+            $i(q) => Ok(q),
+            n @ _ => Err(n),
         }
-    };
+    }};
 }
-
 
 #[test]
 fn simple_opt() {
@@ -334,7 +301,7 @@ fn simple_opt_fail() {
 #[test]
 fn else_clause() {
     let x: Result<String, i32> = Err(7);
-    let _ = inner!(x, else { return });
+    let _ = inner!(x, else return);
     panic!();
 }
 
@@ -365,9 +332,7 @@ fn if_else() {
         _Orange(i16),
     }
     let z = Fruit::Apple(15);
-    assert_eq!(15, inner!(z, if Fruit::Apple, else {
-        panic!("Not an apple");
-    }));
+    assert_eq!(15, inner!(z, if Fruit::Apple, else panic!("Not an apple")));
 }
 
 #[test]
@@ -387,19 +352,20 @@ fn own_enum() {
         }
     }
     let z = Fruit::Orange(15);
-    assert_eq!(7, inner!(z, else |e| { (e - 8) as i32 }));
+    assert_eq!(7, inner!(z, else |e| (e - 8) as i32));
 
     let z = Fruit::Apple(15);
-    assert_eq!(9, inner!(z, if Fruit::Orange, else |e| {
-        assert_eq!(e, Fruit::Apple(15));
-        9
-    }));
-
+    assert_eq!(
+        9,
+        inner!(z, if Fruit::Orange, else |e| {
+            assert_eq!(e, Fruit::Apple(15));
+            9
+        })
+    );
 }
 
 #[test]
 fn some() {
-
     #[derive(Debug, PartialEq, Eq)]
     enum Fruit {
         Apple(i32),
@@ -408,15 +374,17 @@ fn some() {
 
     assert_eq!(some!(Fruit::Apple(15), if Fruit::Apple), Some(15));
     assert_eq!(some!(Fruit::Orange(15), if Fruit::Apple), None);
-    assert_eq!(some!(Fruit::Orange(15), if Fruit::Apple, else |e| {
-        assert_eq!(e, Fruit::Orange(15));
+    assert_eq!(
+        some!(Fruit::Orange(15), if Fruit::Apple, else |e| {
+            assert_eq!(e, Fruit::Orange(15));
+            Some(30)
+        }),
         Some(30)
-    }), Some(30));
+    );
 }
 
 #[test]
 fn ok() {
-
     #[derive(Debug, PartialEq, Eq)]
     enum Fruit {
         Apple(i32),
@@ -425,13 +393,18 @@ fn ok() {
 
     assert_eq!(ok!(Fruit::Apple(15), if Fruit::Apple), Ok(15));
 
-    assert_eq!(ok!(Fruit::Orange(15), if Fruit::Apple), Err(Fruit::Orange(15)));
-    assert_eq!(ok!(Fruit::Orange(15), if Fruit::Apple, else |e| {
-        assert_eq!(e, Fruit::Orange(15));
+    assert_eq!(
+        ok!(Fruit::Orange(15), if Fruit::Apple),
+        Err(Fruit::Orange(15))
+    );
+    assert_eq!(
+        ok!(Fruit::Orange(15), if Fruit::Apple, else |e| {
+            assert_eq!(e, Fruit::Orange(15));
+            Err(3)
+        }),
         Err(3)
-    }), Err(3));
+    );
 
-    assert_eq!(ok!(Fruit::Apple(15), if Fruit::Orange, or {67}), Err(67));
-    assert_eq!(ok!(Fruit::Apple(15), if Fruit::Apple, or {67}), Ok(15));
+    assert_eq!(ok!(Fruit::Apple(15), if Fruit::Orange, or 67), Err(67));
+    assert_eq!(ok!(Fruit::Apple(15), if Fruit::Apple, or 67), Ok(15));
 }
-
